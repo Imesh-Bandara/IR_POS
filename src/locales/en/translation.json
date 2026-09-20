@@ -1,0 +1,19 @@
+{
+  "dashboard": "Dashboard",
+  "products": "Products",
+  "inventory": "Inventory",
+  "sales": "Sales",
+  "customers": "Customers",
+  "reports": "Reports",
+  "settings": "Settings",
+  "logout": "Logout",
+  "search": "Search product / scan barcode",
+  "cart": "CART",
+  "subtotal": "Subtotal",
+  "discount": "Discount",
+  "tax": "Tax",
+  "total": "TOTAL",
+  "cash": "CASH",
+  "card": "CARD",
+  "other": "OTHER"
+}
