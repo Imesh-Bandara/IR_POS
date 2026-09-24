@@ -11,13 +11,6 @@ export function useBarcodeScanner(onScan: (barcode: string) => void) {
     let lastKeyTime = Date.now();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input field (except if we want scanning to override)
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        // Only ignore if it's not our dedicated search box, or we let the search box handle it.
-        // Actually, if they are focused on search, let's let the input handle it, then they press Enter.
-        return;
-      }
-
       const currentTime = Date.now();
       
       // If time between keys is too long, reset buffer. (Scanners type very fast, < 30ms per char)
@@ -29,7 +22,13 @@ export function useBarcodeScanner(onScan: (barcode: string) => void) {
 
       if (e.key === "Enter") {
         if (buffer.length > 2) {
-          onScan(buffer);
+          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+             // Prevent scanner's Enter key from submitting forms accidentally
+             e.preventDefault();
+             // The characters have already been natively typed into the input, which is fine
+          } else {
+             onScan(buffer);
+          }
         }
         buffer = "";
         return;
@@ -37,6 +36,11 @@ export function useBarcodeScanner(onScan: (barcode: string) => void) {
 
       if (e.key.length === 1) {
         buffer += e.key;
+      }
+
+      // If we are just typing normally in an input field, do not process further
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
       }
     };
 

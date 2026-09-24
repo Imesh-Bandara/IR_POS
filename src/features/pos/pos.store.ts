@@ -57,22 +57,22 @@ export const usePOSStore = create<POSState>((set) => ({
       newCart = newCart.map(i => {
         if (i.product_id === newItem.product_id) {
           const qty = i.quantity + 1;
-          const sub = i.unit_price * qty;
+          const sub = Math.round(i.unit_price * qty);
           return {
             ...i,
             quantity: qty,
             subtotal: sub,
-            total: sub - (i.discount_amount * qty) + (i.tax_amount * qty)
+            total: Math.round(sub - (i.discount_amount * qty) + (i.tax_amount * qty))
           };
         }
         return i;
       });
     } else {
-      const sub = newItem.unit_price * newItem.quantity;
+      const sub = Math.round(newItem.unit_price * newItem.quantity);
       newCart.push({
         ...newItem,
         subtotal: sub,
-        total: sub - (newItem.discount_amount * newItem.quantity) + (newItem.tax_amount * newItem.quantity)
+        total: Math.round(sub - (newItem.discount_amount * newItem.quantity) + (newItem.tax_amount * newItem.quantity))
       });
     }
 
@@ -96,12 +96,12 @@ export const usePOSStore = create<POSState>((set) => ({
     const newCart = state.cart.map(i => {
       if (i.product_id === product_id) {
         const validQty = Math.min(qty, i.stock);
-        const sub = i.unit_price * validQty;
+        const sub = Math.round(i.unit_price * validQty);
         return {
           ...i,
           quantity: validQty,
           subtotal: sub,
-          total: sub - (i.discount_amount * validQty) + (i.tax_amount * validQty)
+          total: Math.round(sub - (i.discount_amount * validQty) + (i.tax_amount * validQty))
         };
       }
       return i;

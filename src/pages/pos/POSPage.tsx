@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Plus, Minus, Trash2, PauseCircle, PlayCircle, CreditCard, List } from "lucide-react";
+import { Search, Plus, Minus, Trash2, PauseCircle, PlayCircle, CreditCard, List, Package } from "lucide-react";
 import { usePOSStore } from "../../features/pos/pos.store";
 import { POSAPI, HeldSaleDetails } from "../../features/pos/pos.api";
 import { InventoryProduct } from "../../features/inventory/inventory.api";
 import { useAuthStore } from "../../features/auth/auth.store";
 import { useBarcodeScanner } from "../../features/pos/useBarcodeScanner";
 import { PaymentModal } from "./PaymentModal";
+import { QuickAddProductModal } from "./QuickAddProductModal";
 import toast, { Toaster } from "react-hot-toast";
 
 export function POSPage() {
@@ -17,6 +18,10 @@ export function POSPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [heldCarts, setHeldCarts] = useState<HeldSaleDetails[]>([]);
   const [showHeldModal, setShowHeldModal] = useState(false);
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState("");
+  const [quantityPromptProduct, setQuantityPromptProduct] = useState<InventoryProduct | null>(null);
+  const [manualQuantity, setManualQuantity] = useState<string>("1");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Focus search on mount
@@ -63,7 +68,8 @@ export function POSPage() {
         });
         toast.success(`Added ${p.name_en}`);
       } else {
-        toast.error(`Barcode not found: ${barcode}`);
+        setScannedBarcode(barcode);
+        setShowQuickAddModal(true);
       }
     } catch (e) {
       console.error(e);
@@ -73,7 +79,7 @@ export function POSPage() {
 
   // Manual Search Effect
   useEffect(() => {
-    if (!token || search.length < 2) {
+    if (!token) {
       setResults([]);
       return;
     }
@@ -84,7 +90,7 @@ export function POSPage() {
       } catch (e) {
         console.error("Search failed", e);
       }
-    }, 200);
+    }, search.length > 0 ? 200 : 0);
     return () => clearTimeout(timer);
   }, [search, token]);
 
@@ -175,6 +181,14 @@ export function POSPage() {
       toast.error("Product is out of stock");
       return;
     }
+    
+    // If product has no barcode, it's likely a manual/weight-based product.
+    if (!p.barcode) {
+      setQuantityPromptProduct(p);
+      setManualQuantity("1");
+      return;
+    }
+
     store.addItem({
       product_id: p.id,
       name: p.name_en,
@@ -186,6 +200,36 @@ export function POSPage() {
       tax_amount: 0,
       stock: p.current_stock
     });
+    setSearch("");
+    searchInputRef.current?.focus();
+  };
+
+  const handleManualQuantitySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const qty = parseFloat(manualQuantity);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error("Invalid quantity");
+      return;
+    }
+    if (quantityPromptProduct) {
+      if (qty > quantityPromptProduct.current_stock) {
+        toast.error(`Only ${quantityPromptProduct.current_stock} in stock`);
+        return;
+      }
+      store.addItem({
+        product_id: quantityPromptProduct.id,
+        name: quantityPromptProduct.name_en,
+        barcode: quantityPromptProduct.barcode,
+        sku: quantityPromptProduct.sku,
+        quantity: qty,
+        unit_price: quantityPromptProduct.selling_price,
+        discount_amount: quantityPromptProduct.discount_amount || 0,
+        tax_amount: 0,
+        stock: quantityPromptProduct.current_stock
+      });
+      toast.success(`Added ${quantityPromptProduct.name_en}`);
+    }
+    setQuantityPromptProduct(null);
     setSearch("");
     searchInputRef.current?.focus();
   };
@@ -203,17 +247,39 @@ export function POSPage() {
             <input 
               ref={searchInputRef}
               type="text" 
-              placeholder="F2 to search by Name, SKU, or Barcode..."
+              placeholder="F2 to search by Name, SKU, or Barcode... (Press Enter to Quick Add)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && search.trim().length > 0) {
+                  e.preventDefault();
+                  const exactMatch = results.find(r => r.barcode === search.trim() || r.sku === search.trim());
+                  if (exactMatch) {
+                    handleProductClick(exactMatch);
+                  } else {
+                    setScannedBarcode(search.trim());
+                    setShowQuickAddModal(true);
+                  }
+                }
+              }}
               className="w-full pl-12 pr-4 py-3 text-lg rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-0 outline-none transition-colors"
             />
           </div>
+          <button 
+            onClick={() => {
+              setScannedBarcode(search.trim());
+              setShowQuickAddModal(true);
+            }}
+            className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+            title="Manual Quick Add"
+          >
+            <Plus size={24} /> New
+          </button>
         </div>
         
         {/* Product Grid / Results */}
         <div className="flex-1 p-4 overflow-y-auto">
-          {search.length > 0 ? (
+          {results.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {results.map(p => (
                 <button
@@ -236,17 +302,27 @@ export function POSPage() {
                   </div>
                 </button>
               ))}
-              {results.length === 0 && search.length >= 2 && (
-                <div className="col-span-full text-center py-10 text-gray-500 text-lg">
-                  No products found.
-                </div>
-              )}
+            </div>
+          ) : search.length > 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
+              <Search size={64} className="opacity-20" />
+              <div className="text-xl font-medium">No products found</div>
+              <div className="text-sm">Try a different search term</div>
+              <button 
+                onClick={() => {
+                  setScannedBarcode(search.trim());
+                  setShowQuickAddModal(true);
+                }}
+                className="mt-4 px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Plus size={20} /> Quick Add "{search}"
+              </button>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-              <Search size={64} className="opacity-20" />
-              <div className="text-xl font-medium">Scan barcode or type to search</div>
-              <div className="text-sm">Keyboard F2 to focus search</div>
+              <Package size={64} className="opacity-20" />
+              <div className="text-xl font-medium">No products available</div>
+              <div className="text-sm">Add some products to your inventory first</div>
             </div>
           )}
         </div>
@@ -419,6 +495,79 @@ export function POSPage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add Product Modal */}
+      {showQuickAddModal && (
+        <QuickAddProductModal 
+          initialBarcode={scannedBarcode}
+          onClose={() => {
+            setShowQuickAddModal(false);
+            searchInputRef.current?.focus();
+          }}
+          onSuccess={(product) => {
+            setShowQuickAddModal(false);
+            toast.success("Product created successfully");
+            // Add to cart directly
+            store.addItem({
+              product_id: product.id,
+              name: product.name_en,
+              barcode: product.barcode,
+              sku: product.sku,
+              quantity: 1,
+              unit_price: product.selling_price,
+              discount_amount: product.discount_amount || 0,
+              tax_amount: 0,
+              stock: product.current_stock
+            });
+            searchInputRef.current?.focus();
+          }}
+        />
+      )}
+
+      {/* Manual Quantity Modal */}
+      {quantityPromptProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Enter Quantity</h2>
+              <button onClick={() => setQuantityPromptProduct(null)} className="text-gray-500 hover:text-gray-700">
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+            <form onSubmit={handleManualQuantitySubmit} className="p-6 space-y-4">
+              <div>
+                <div className="font-bold text-gray-800 mb-2">{quantityPromptProduct.name_en}</div>
+                <div className="text-sm text-gray-500 mb-4">Price: Rs. {(quantityPromptProduct.selling_price / 100).toFixed(2)}</div>
+                
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                <input 
+                  type="number"
+                  step="0.001"
+                  value={manualQuantity}
+                  onChange={(e) => setManualQuantity(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono" 
+                  autoFocus
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-3 border-t border-gray-200">
+                <button 
+                  type="button" 
+                  onClick={() => setQuantityPromptProduct(null)} 
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-6 py-2 bg-blue-600 rounded-lg text-white font-medium hover:bg-blue-700"
+                >
+                  Add
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

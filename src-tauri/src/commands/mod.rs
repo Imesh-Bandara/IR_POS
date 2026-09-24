@@ -7,3 +7,5 @@ pub mod held_sales_cmds;
 pub mod supplier_cmds;
 pub mod purchase_cmds;
 pub mod report_cmds;
+pub mod hardware_cmds;
+pub mod backup_cmds;

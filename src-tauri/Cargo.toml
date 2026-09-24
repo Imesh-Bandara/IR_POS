@@ -1,9 +1,10 @@
 [package]
-name = "tauri-app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+name = "ir-pos"
+version = "1.0.0"
+description = "IR POS commercial desktop point-of-sale and inventory application"
+authors = ["IR Fusions"]
 edition = "2021"
+default-run = "ir-pos"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -29,6 +30,8 @@ uuid = { version = "1.26.1", features = ["v4", "serde"] }
 argon2 = "0.5"
 password-hash = "0.4"
 rand = "0.8"
+log = { version = "0.4", features = ["std", "alloc"] }
+tauri-plugin-dialog = "2.7.3"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

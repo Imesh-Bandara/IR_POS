@@ -56,6 +56,91 @@ pub async fn create_category(
 }
 
 #[tauri::command]
+pub async fn update_category(
+    token: String,
+    id: String,
+    name_en: String,
+    name_si: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<Category, String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    let rows_affected = sqlx::query("UPDATE categories SET name_en = ?, name_si = ? WHERE id = ?")
+        .bind(&name_en)
+        .bind(&name_si)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?
+        .rows_affected();
+
+    if rows_affected == 0 {
+        return Err("Category not found".into());
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'UPDATE', 'CATEGORY', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(Category { id, name_en, name_si })
+}
+
+#[tauri::command]
+pub async fn delete_category(
+    token: String,
+    id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    // Check if category is used
+    let count: (i64,) = sqlx::query_as("SELECT count(*) FROM products WHERE category_id = ?")
+        .bind(&id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if count.0 > 0 {
+        return Err("Cannot delete category because it is used in products".into());
+    }
+
+    let rows_affected = sqlx::query("DELETE FROM categories WHERE id = ?")
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?
+        .rows_affected();
+
+    if rows_affected == 0 {
+        return Err("Category not found".into());
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'DELETE', 'CATEGORY', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_brands(
     token: String,
     state: tauri::State<'_, AppState>,
@@ -107,6 +192,90 @@ pub async fn create_brand(
 }
 
 #[tauri::command]
+pub async fn update_brand(
+    token: String,
+    id: String,
+    name_en: String,
+    name_si: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<Brand, String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    let rows_affected = sqlx::query("UPDATE brands SET name_en = ?, name_si = ? WHERE id = ?")
+        .bind(&name_en)
+        .bind(&name_si)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?
+        .rows_affected();
+
+    if rows_affected == 0 {
+        return Err("Brand not found".into());
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'UPDATE', 'BRAND', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(Brand { id, name_en, name_si })
+}
+
+#[tauri::command]
+pub async fn delete_brand(
+    token: String,
+    id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    let count: (i64,) = sqlx::query_as("SELECT count(*) FROM products WHERE brand_id = ?")
+        .bind(&id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if count.0 > 0 {
+        return Err("Cannot delete brand because it is used in products".into());
+    }
+
+    let rows_affected = sqlx::query("DELETE FROM brands WHERE id = ?")
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?
+        .rows_affected();
+
+    if rows_affected == 0 {
+        return Err("Brand not found".into());
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'DELETE', 'BRAND', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_units(
     token: String,
     state: tauri::State<'_, AppState>,
@@ -121,6 +290,128 @@ pub async fn get_units(
     .map_err(|e| e.to_string())?;
 
     Ok(records)
+}
+
+#[tauri::command]
+pub async fn create_unit(
+    token: String,
+    name_en: String,
+    name_si: Option<String>,
+    abbreviation: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<Unit, String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+    let id = Uuid::new_v4().to_string();
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    sqlx::query("INSERT INTO units (id, name_en, name_si, abbreviation) VALUES (?, ?, ?, ?)")
+        .bind(&id)
+        .bind(&name_en)
+        .bind(&name_si)
+        .bind(&abbreviation)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'CREATE', 'UNIT', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(Unit { id, name_en, name_si, abbreviation })
+}
+
+#[tauri::command]
+pub async fn update_unit(
+    token: String,
+    id: String,
+    name_en: String,
+    name_si: Option<String>,
+    abbreviation: Option<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<Unit, String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    let rows_affected = sqlx::query("UPDATE units SET name_en = ?, name_si = ?, abbreviation = ? WHERE id = ?")
+        .bind(&name_en)
+        .bind(&name_si)
+        .bind(&abbreviation)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?
+        .rows_affected();
+
+    if rows_affected == 0 {
+        return Err("Unit not found".into());
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'UPDATE', 'UNIT', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(Unit { id, name_en, name_si, abbreviation })
+}
+
+#[tauri::command]
+pub async fn delete_unit(
+    token: String,
+    id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    let count: (i64,) = sqlx::query_as("SELECT count(*) FROM products WHERE unit_id = ?")
+        .bind(&id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if count.0 > 0 {
+        return Err("Cannot delete unit because it is used in products".into());
+    }
+
+    let rows_affected = sqlx::query("DELETE FROM units WHERE id = ?")
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?
+        .rows_affected();
+
+    if rows_affected == 0 {
+        return Err("Unit not found".into());
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'DELETE', 'UNIT', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -284,4 +575,86 @@ pub async fn get_products(
         items,
         total: count.0,
     })
+}
+
+#[tauri::command]
+pub async fn get_product(
+    token: String,
+    id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Product, String> {
+    validate_permission(&state.db, &token, "products.view").await?;
+
+    let product = sqlx::query_as::<_, Product>(
+        "SELECT id, sku, barcode, name_en, name_si, category_id, brand_id, unit_id, 
+         cost_price, selling_price, wholesale_price, tax_rate, discount_amount, 
+         minimum_stock, current_stock, status
+         FROM products WHERE id = ?"
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    match product {
+        Some(p) => Ok(p),
+        None => Err("Product not found".into()),
+    }
+}
+
+#[tauri::command]
+pub async fn update_product(
+    token: String,
+    product: Product,
+    state: tauri::State<'_, AppState>,
+) -> Result<Product, String> {
+    let user_id = validate_permission(&state.db, &token, "products.create").await?;
+
+    let mut tx = state.db.begin().await.map_err(|e| e.to_string())?;
+
+    let rows_affected = sqlx::query(
+        "UPDATE products SET 
+            sku = ?, barcode = ?, name_en = ?, name_si = ?, category_id = ?, 
+            brand_id = ?, unit_id = ?, cost_price = ?, selling_price = ?, 
+            wholesale_price = ?, tax_rate = ?, discount_amount = ?, 
+            minimum_stock = ?, current_stock = ?, status = ?
+         WHERE id = ?"
+    )
+    .bind(&product.sku)
+    .bind(&product.barcode)
+    .bind(&product.name_en)
+    .bind(&product.name_si)
+    .bind(&product.category_id)
+    .bind(&product.brand_id)
+    .bind(&product.unit_id)
+    .bind(&product.cost_price)
+    .bind(&product.selling_price)
+    .bind(&product.wholesale_price)
+    .bind(&product.tax_rate)
+    .bind(&product.discount_amount)
+    .bind(&product.minimum_stock)
+    .bind(&product.current_stock)
+    .bind(&product.status)
+    .bind(&product.id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?
+    .rows_affected();
+
+    if rows_affected == 0 {
+        return Err("Product not found".into());
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id) VALUES (?, ?, 'UPDATE', 'PRODUCT', ?)")
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&product.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(product)
 }

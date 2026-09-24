@@ -22,7 +22,7 @@ pub struct Unit {
     pub abbreviation: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]
 pub struct Product {
     pub id: String,
     pub sku: Option<String>,

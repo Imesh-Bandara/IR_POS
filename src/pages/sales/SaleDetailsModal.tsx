@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { X, CornerUpLeft, Ban, AlertCircle } from "lucide-react";
 import { useAuthStore } from "../../features/auth/auth.store";
 import { SalesAPI, SaleDetails, ReturnRecord, RefundRecord } from "../../features/sales/sales.api";
+import { HardwareAPI } from "../../features/hardware/hardware.api";
 import { VoidSaleModal } from "./VoidSaleModal";
 import { ReturnSaleModal } from "./ReturnSaleModal";
 import toast from "react-hot-toast";
+import { Printer } from "lucide-react";
 
 interface Props {
   saleId: string;
@@ -41,6 +43,16 @@ export function SaleDetailsModal({ saleId, onClose }: Props) {
     }
   };
 
+  const handleReprint = async () => {
+    if (!token || !details) return;
+    try {
+      await HardwareAPI.printReceipt(token, details.sale.invoice_number);
+      toast.success("Reprint receipt sent to printer");
+    } catch (err: any) {
+      toast.error(typeof err === 'string' ? err : err.message || "Printer error");
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [saleId, token]);
@@ -58,6 +70,7 @@ export function SaleDetailsModal({ saleId, onClose }: Props) {
   const { sale, items, payments } = details;
   const canVoid = sale.status === "COMPLETED" && hasPermission("sales.void");
   const canReturn = (sale.status === "COMPLETED" || sale.status === "PARTIALLY_RETURNED") && hasPermission("sales.return");
+  const canReprint = hasPermission("receipt.print");
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
@@ -189,6 +202,14 @@ export function SaleDetailsModal({ saleId, onClose }: Props) {
 
         {/* Actions */}
         <div className="p-4 border-t border-gray-200 bg-white flex justify-end gap-3 rounded-b-xl">
+          {canReprint && (
+            <button 
+              onClick={handleReprint}
+              className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold rounded-lg flex items-center gap-2 transition-colors mr-auto"
+            >
+              <Printer size={18} /> Reprint Receipt
+            </button>
+          )}
           {canVoid && (
             <button 
               onClick={() => setShowVoid(true)}

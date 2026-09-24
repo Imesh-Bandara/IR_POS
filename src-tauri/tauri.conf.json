@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
-  "version": "0.1.0",
-  "identifier": "com.irpos.app",
+  "productName": "IR POS",
+  "version": "1.0.0",
+  "identifier": "com.irfusions.irpos",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600
+        "title": "IR POS",
+        "width": 1366,
+        "height": 900,
+        "minWidth": 1100,
+        "minHeight": 720,
+        "resizable": true,
+        "maximized": true,
+        "fullscreen": false
       }
     ],
     "security": {
@@ -23,13 +28,25 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "dmg", "app"],
+    "publisher": "IR Fusions",
+    "category": "Utility",
+    "shortDescription": "Commercial POS and inventory system for Sri Lankan retail businesses",
+    "longDescription": "IR POS is a desktop point-of-sale and inventory management application designed for local retail operations.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "startMenuFolder": "IR Fusions"
+      }
+    }
   }
 }

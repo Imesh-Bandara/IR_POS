@@ -6,3 +6,4 @@ pub mod sales;
 pub mod returns;
 pub mod suppliers;
 pub mod purchases;
+pub mod backup;

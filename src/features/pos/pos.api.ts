@@ -67,6 +67,17 @@ export const POSAPI = {
     return invoke("search_products_pos", { token, query });
   },
 
+  quickAddProduct: async (token: string, payload: {
+    nameEn: string;
+    barcode?: string;
+    sellingPrice: number;
+    unitId: string;
+    costPrice?: number;
+    openingQuantity?: number;
+  }): Promise<InventoryProduct> => {
+    return invoke("quick_add_product", { token, ...payload });
+  },
+
   checkout: async (token: string, payload: CheckoutPayload): Promise<InvoiceResult> => {
     return invoke("checkout", { token, payload });
   },

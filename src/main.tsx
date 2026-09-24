@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Toaster } from "react-hot-toast";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./i18n";
 import "./index.css";
@@ -27,10 +28,14 @@ import { SalesReport } from "./pages/reports/SalesReport";
 import { ProductPerformanceReport } from "./pages/reports/ProductPerformanceReport";
 import { InventoryReport } from "./pages/reports/InventoryReport";
 import { SupplierReport } from "./pages/reports/SupplierReport";
+import { MetadataSettingsPage } from "./pages/settings/MetadataSettingsPage";
+import { BackupRestorePage } from "./pages/settings/BackupRestorePage";
+import { HardwareSettingsPage } from "./pages/settings/HardwareSettingsPage";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup" element={<FirstRunSetup />} />
@@ -40,6 +45,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
             <Route index element={<Dashboard />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="products/new" element={<ProductForm />} />
+            <Route path="products/:id/edit" element={<ProductForm />} />
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="inventory/movements" element={<StockMovementHistoryPage />} />
             <Route path="pos" element={<POSPage />} />
@@ -65,6 +71,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
               <Route path="inventory" element={<InventoryReport />} />
               <Route path="purchases" element={<SupplierReport />} /> {/* Mapping purchases link to Supplier Report for now */}
             </Route>
+
+            {/* Settings */}
+            <Route path="settings/metadata" element={<MetadataSettingsPage />} />
+            <Route path="settings/backup-restore" element={<BackupRestorePage />} />
+            <Route path="settings/hardware" element={<HardwareSettingsPage />} />
           </Route>
         </Route>
       </Routes>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Save } from "lucide-react";
@@ -9,6 +9,8 @@ import { useAuthStore } from "../../features/auth/auth.store";
 
 export function ProductForm() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEditMode = Boolean(id);
   const { token } = useAuthStore();
   
   const [categories, setCategories] = useState<Category[]>([]);
@@ -17,7 +19,7 @@ export function ProductForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<ProductFormValues>({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProductFormValues>({
     resolver: zodResolver(ProductSchema),
     defaultValues: {
       status: "ACTIVE",
@@ -31,7 +33,7 @@ export function ProductForm() {
   });
 
   useEffect(() => {
-    async function loadMetadata() {
+    async function loadData() {
       if (!token) return;
       try {
         const [cats, brnds, unts] = await Promise.all([
@@ -42,12 +44,26 @@ export function ProductForm() {
         setCategories(cats);
         setBrands(brnds);
         setUnits(unts);
-      } catch (e) {
-        console.error("Failed to load metadata", e);
+
+        if (isEditMode && id) {
+          const product = await ProductAPI.getProduct(token, id);
+          reset({
+            ...product,
+            status: product.status as "ACTIVE" | "INACTIVE",
+            cost_price: product.cost_price / 100,
+            selling_price: product.selling_price / 100,
+            wholesale_price: product.wholesale_price ? product.wholesale_price / 100 : undefined,
+            discount_amount: product.discount_amount / 100,
+            tax_rate: product.tax_rate / 100,
+          });
+        }
+      } catch (e: any) {
+        console.error("Failed to load data", e);
+        setError("Failed to load product data.");
       }
     }
-    loadMetadata();
-  }, [token]);
+    loadData();
+  }, [token, id, isEditMode, reset]);
 
   const onSubmit = async (data: ProductFormValues) => {
     if (!token) return;
@@ -62,10 +78,14 @@ export function ProductForm() {
         wholesale_price: data.wholesale_price ? Math.round(data.wholesale_price * 100) : undefined,
         discount_amount: Math.round(data.discount_amount * 100),
         tax_rate: Math.round(data.tax_rate * 100),
-        id: data.id || "",
+        id: id || "",
       };
       
-      await ProductAPI.createProduct(token, payload);
+      if (isEditMode) {
+        await ProductAPI.updateProduct(token, payload);
+      } else {
+        await ProductAPI.createProduct(token, payload);
+      }
       navigate("/products");
     } catch (err: any) {
       setError(typeof err === "string" ? err : err.message || "Failed to save product");
@@ -80,7 +100,7 @@ export function ProductForm() {
         <button onClick={() => navigate("/products")} className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors">
           <ArrowLeft size={24} />
         </button>
-        <h2 className="text-2xl font-bold text-gray-800">New Product</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{isEditMode ? "Edit Product" : "New Product"}</h2>
       </div>
 
       {error && (

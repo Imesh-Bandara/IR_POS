@@ -1,12 +1,13 @@
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, ShoppingCart, Package, Users, Settings, LogOut, ClipboardList, Monitor, Truck, FileText, Receipt, BarChart2 } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, Users, Settings, LogOut, ClipboardList, Monitor, Truck, FileText, Receipt, BarChart2, Database, Printer } from "lucide-react";
 import { useAuthStore } from "../features/auth/auth.store";
 import { invoke } from "@tauri-apps/api/core";
 
 export function MainLayout() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, token, clearAuth, hasPermission } = useAuthStore();
 
   const toggleLanguage = () => {
@@ -26,6 +27,27 @@ export function MainLayout() {
     navigate("/login");
   };
 
+  const isActive = (path: string) => {
+    if (path === '/' && location.pathname !== '/') return false;
+    return location.pathname.startsWith(path);
+  };
+
+  const getLinkClass = (path: string) => {
+    return `flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+      isActive(path) 
+        ? "text-blue-600 bg-blue-50" 
+        : "text-gray-700 hover:bg-gray-50"
+    }`;
+  };
+
+  const getPosLinkClass = (path: string) => {
+    return `flex items-center space-x-3 px-4 py-3 rounded-lg font-bold transition-colors ${
+      isActive(path)
+        ? "text-white bg-blue-700"
+        : "text-white bg-blue-600 hover:bg-blue-700"
+    }`;
+  };
+
   return (
     <div className="flex h-screen bg-gray-100 font-sans text-gray-900">
       {/* Sidebar */}
@@ -35,55 +57,55 @@ export function MainLayout() {
         </div>
         <nav className="flex-1 p-4 space-y-2">
           {hasPermission("dashboard.view") && (
-            <Link to="/" className="flex items-center space-x-3 text-blue-600 bg-blue-50 px-4 py-3 rounded-lg font-medium">
+            <Link to="/" className={getLinkClass("/")}>
               <LayoutDashboard size={20} />
               <span>{t('dashboard')}</span>
             </Link>
           )}
           {hasPermission("sales.view") && (
-            <Link to="/sales" className="flex items-center space-x-3 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg font-medium transition-colors">
+            <Link to="/sales" className={getLinkClass("/sales")}>
               <ShoppingCart size={20} />
               <span>{t('sales')}</span>
             </Link>
           )}
           {hasPermission("sales.create") && (
-            <Link to="/pos" className="flex items-center space-x-3 text-white bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg font-bold transition-colors">
+            <Link to="/pos" className={getPosLinkClass("/pos")}>
               <Monitor size={20} />
               <span>POS / Billing</span>
             </Link>
           )}
           {hasPermission("products.view") && (
-            <Link to="/products" className="flex items-center space-x-3 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg font-medium transition-colors">
+            <Link to="/products" className={getLinkClass("/products")}>
               <Package size={20} />
               <span>{t('products')}</span>
             </Link>
           )}
           {hasPermission("inventory.view") && (
-            <Link to="/inventory" className="flex items-center space-x-3 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg font-medium transition-colors">
+            <Link to="/inventory" className={getLinkClass("/inventory")}>
               <ClipboardList size={20} />
               <span>Inventory</span>
             </Link>
           )}
           {hasPermission("suppliers.view") && (
-            <Link to="/suppliers" className="flex items-center space-x-3 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg font-medium transition-colors">
+            <Link to="/suppliers" className={getLinkClass("/suppliers")}>
               <Truck size={20} />
               <span>Suppliers</span>
             </Link>
           )}
           {hasPermission("purchases.view") && (
-            <Link to="/purchase-orders" className="flex items-center space-x-3 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg font-medium transition-colors">
+            <Link to="/purchase-orders" className={getLinkClass("/purchase-orders")}>
               <FileText size={20} />
               <span>Purchase Orders</span>
             </Link>
           )}
           {hasPermission("purchases.view") && (
-            <Link to="/purchases" className="flex items-center space-x-3 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg font-medium transition-colors">
+            <Link to="/purchases" className={getLinkClass("/purchases")}>
               <Receipt size={20} />
               <span>Purchases</span>
             </Link>
           )}
           {hasPermission("sales.view") && (
-            <Link to="/reports/sales" className="flex items-center space-x-3 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg font-medium transition-colors">
+            <Link to="/reports" className={getLinkClass("/reports")}>
               <BarChart2 size={20} />
               <span>Reports</span>
             </Link>
@@ -94,11 +116,23 @@ export function MainLayout() {
               <span>{t('customers')} (WIP)</span>
             </div>
           )}
-          {hasPermission("settings.view") && (
-            <div className="flex items-center space-x-3 text-gray-400 px-4 py-3 rounded-lg font-medium cursor-not-allowed" title="Not implemented yet">
+          {hasPermission("products.create") && (
+            <Link to="/settings/metadata" className={getLinkClass("/settings/metadata")}>
               <Settings size={20} />
-              <span>{t('settings')} (WIP)</span>
-            </div>
+              <span>Metadata Settings</span>
+            </Link>
+          )}
+          {hasPermission("backup.view") && (
+            <Link to="/settings/backup-restore" className={getLinkClass("/settings/backup-restore")}>
+              <Database size={20} />
+              <span>Backup & Restore</span>
+            </Link>
+          )}
+          {hasPermission("hardware.view") && (
+            <Link to="/settings/hardware" className={getLinkClass("/settings/hardware")}>
+              <Printer size={20} />
+              <span>Hardware</span>
+            </Link>
           )}
         </nav>
         <div className="p-4 border-t border-gray-200">
